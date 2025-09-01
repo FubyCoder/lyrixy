@@ -1,0 +1,15 @@
+{
+    "description": "",
+    "manifest_version": 2,
+    "name": "LyriXy",
+    "version": "0.1",
+    "content_scripts": [
+        {
+            "matches": ["https://open.spotify.com/*"],
+            "js": ["index.js"],
+            "css": ["index.css"],
+            "run_at": "document_end"
+        }
+    ],
+    "permissions": ["https://lrclib.net/*"]
+}
