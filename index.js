@@ -9,13 +9,62 @@ const artist_name_query = "[data-testid='context-item-info-subtitles']";
 let playback_time_trigger = document.querySelector("[data-testid='progress-bar']");
 let playback_time_field = document.querySelector("[data-testid='playback-position']");
 
-let last_track_name = null;
-let last_artist_name = null;
-
 let current_lyrics = null;
 
 let display_lyrics = false;
 let lyrics_modal = null;
+
+class SongCache {
+    // Using a array should be faster if we cache the index in the map for faster lookups
+    cache = new Map();
+    cache_last_usage = new Map();
+    capacity = 50;
+
+    #create_key(track_name, artist_name) {
+        return track_name + "||" + artist_name;
+    }
+
+    get(track_name, artist_name) {
+        const key = this.#create_key(track_name, artist_name);
+        this.cache_last_usage.set(key, Date.now);
+        return this.cache.get(key);
+    }
+
+    set(track_name, artist_name, lyrics) {
+        const key = this.#create_key(track_name, artist_name);
+        this.cache_last_usage.set(key, Date.now);
+        return this.cache.set(key, lyrics);
+    }
+
+    has(track_name, artist_name, lyrics) {
+        const key = this.#create_key(track_name, artist_name);
+        return this.cache.has(key, lyrics);
+    }
+
+    cleaup() {
+        if (this.cache_last_usage.size() < this.capacity) {
+            return;
+        }
+
+        let lastItem = null;
+        let lastItemTimestamp = Infinity;
+
+        for (const [key, entry] of this.cache_last_usage.entries()) {
+            if (lastItemTimestamp > entry) {
+                lastItemTimestamp = entry;
+                lastItem = key;
+            }
+        }
+
+        // Shouldnt happen but better be sure
+        if (lastItem !== null) {
+            this.cache.delete(lastItem);
+            this.cache_last_usage.delete(lastItem);
+        }
+    }
+}
+
+const songCache = new SongCache();
 
 /**
  *
@@ -414,18 +463,19 @@ async function init() {
     async function handleTrackName() {
         const { track_name, artist_name } = get_track_info();
 
-        if (last_track_name === track_name && last_artist_name === artist_name) {
-            return;
+        let lyrics = [];
+
+        if (songCache.has(track_name, artist_name)) {
+            lyrics = songCache.get(track_name, artist_name);
+        } else {
+            const songs = await search_songs(track_name, artist_name);
+            const timed_lyrics = parse_song_lyrics(songs[0].syncedLyrics);
+            songCache.set(track_name, artist_name, timed_lyrics);
+            lyrics = timed_lyrics;
         }
 
-        last_track_name = track_name;
-        last_artist_name = artist_name;
-
-        const songs = await search_songs(track_name, artist_name);
-        const timed_lyrics = parse_song_lyrics(songs[0].syncedLyrics);
-
         lyricsModal.updateState((old) => {
-            old.lyrics = timed_lyrics;
+            old.lyrics = lyrics;
             old.current_row = 0;
         });
     }

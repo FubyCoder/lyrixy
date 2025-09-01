@@ -13,8 +13,11 @@ The extension now installs, and remains installed until you restart Firefox.
 ## How does it work ?
 This project injects a new button in the spotify bottom-right section that allows us to display a new modal in full screen (similar to spotify native lyrics page).
 
-Then we the currently playing song using the generous [LRCLIB](https://lrclib.net) and we sync the lyrics with the current song timetamp
+Then we the currently playing song using the generous [LRCLIB](https://lrclib.net) and we sync the lyrics with the current song timestamp
 
+## Things to fix:
+- Display an error page if there are no lyrics
+- Handle some errors ( API fetch and possible syncedLyrics = null )
 
 ## Contribution
 This is mainly a personal project so I will not merge PRs or edit much of this, unless is something i personally need
