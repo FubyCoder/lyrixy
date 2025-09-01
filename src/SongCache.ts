@@ -10,24 +10,24 @@ export class SongCache {
         this.#capacity = capacity;
     }
 
-    #create_key(track_name: string, artist_name: string) {
-        return track_name + "||" + artist_name;
+    #createKey(trackName: string, artistName: string) {
+        return trackName + "||" + artistName;
     }
 
-    get(track_name: string, artist_name: string): LyricsWithTimestamp[] | null {
-        const key = this.#create_key(track_name, artist_name);
+    get(trackName: string, artistName: string): LyricsWithTimestamp[] | null {
+        const key = this.#createKey(trackName, artistName);
         this.#cache_last_usage.set(key, Date.now);
         return this.#cache.get(key);
     }
 
-    set(track_name: string, artist_name: string, lyrics: LyricsWithTimestamp[]) {
-        const key = this.#create_key(track_name, artist_name);
+    set(trackName: string, artistName: string, lyrics: LyricsWithTimestamp[]) {
+        const key = this.#createKey(trackName, artistName);
         this.#cache_last_usage.set(key, Date.now);
         return this.#cache.set(key, lyrics);
     }
 
-    has(track_name: string, artist_name: string) {
-        const key = this.#create_key(track_name, artist_name);
+    has(trackName: string, artistName: string) {
+        const key = this.#createKey(trackName, artistName);
         return this.#cache.has(key);
     }
 

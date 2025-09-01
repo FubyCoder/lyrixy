@@ -1,4 +1,4 @@
-import { class_list_toggle } from "../utils.js";
+import { classlistToggle } from "../utils.js";
 
 interface LyricRowState {
     kind: "next" | "current" | "passed";
@@ -18,22 +18,21 @@ export class LyricRow {
         this.#node.classList.add("lyric-row");
     }
 
-    updateKind(kind: "next" | "current" | "passed") {
+    setKind(kind: "next" | "current" | "passed") {
         this.#state.kind = kind;
     }
 
-    /** @param {string} text */
-    updateText(text: string) {
+    setText(text: string) {
         this.#state.text = text;
     }
 
-    update() {
+    render() {
         if (this.#node.innerText !== this.#state.text) {
             this.#node.innerText = this.#state.text;
         }
 
-        class_list_toggle(this.#node.classList, "lyric-row-current", this.#state.kind === "current");
-        class_list_toggle(this.#node.classList, "lyric-row-passed", this.#state.kind === "passed");
+        classlistToggle(this.#node.classList, "lyric-row-current", this.#state.kind === "current");
+        classlistToggle(this.#node.classList, "lyric-row-passed", this.#state.kind === "passed");
     }
 
     scrollIntoView() {

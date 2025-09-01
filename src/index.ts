@@ -1,33 +1,41 @@
 import { LyricButton } from "./components/LyricButton.js";
 import { LyricsModal } from "./components/LyricsModal.js";
+import {
+    artistNameQuery,
+    iconBarQuery,
+    playbackPositionQuery,
+    playingWidgetQuery,
+    progressBarQuery,
+    spotifyMainSectionQuery,
+    trackNameQuery,
+} from "./config.js";
 import { SongCache } from "./SongCache.js";
 import type { LyricsWithTimestamp, SongInfo } from "./types/index.js";
-import { parse_song_lyrics, subscribe_mutation, waitForElement } from "./utils.js";
+import { parseSongLyrics, subscribeMutation, waitForElement } from "./utils.js";
 
 console.log("LyriXy starting...");
 
 const API_BASE_URL = "https://lrclib.net";
 
-const track_name_query = "[data-testid='context-item-info-title']";
-const artist_name_query = "[data-testid='context-item-info-subtitles']";
+// Bottom middle section
 
 const SONG_CACHE_CAPACITY = 50;
 const songCache = new SongCache(SONG_CACHE_CAPACITY);
 
-function inject_lyrics_button(button: LyricButton) {
+function injectLyricsButton(button: LyricButton) {
     // TODO better null checks
-    const og_btn = document.querySelector("[data-testid='control-button-npv']");
+    const og_btn = document.querySelector(iconBarQuery);
     og_btn!.parentNode!.insertBefore(button.getNode(), og_btn);
 }
 
 /**
- * @param track_name name of the song
- * @param artist_name name of the artist(s) of the song
+ * @param trackName name of the song
+ * @param artistName name of the artist(s) of the song
  */
-async function search_songs(track_name: string, artist_name: string): Promise<SongInfo[]> {
+async function searchSong(trackName: string, artistName: string): Promise<SongInfo[]> {
     const params = new URLSearchParams();
-    params.set("track_name", track_name);
-    params.set("artist_name", artist_name);
+    params.set("track_name", trackName);
+    params.set("artist_name", artistName);
 
     // TODO add abort controller
 
@@ -39,18 +47,18 @@ async function search_songs(track_name: string, artist_name: string): Promise<So
     });
 }
 
-function get_track_info() {
+function getTrackInfo() {
     // TODO better null checks here
-    const track_name = document.querySelector<HTMLElement>(track_name_query)!.innerText!;
-    const artist_name = document
-        .querySelector<HTMLElement>(artist_name_query)!
+    const trackName = document.querySelector<HTMLElement>(trackNameQuery)!.innerText!;
+    const artistName = document
+        .querySelector<HTMLElement>(artistNameQuery)!
         .innerText!.split("\n")
         .map((item) => item.trim())
         .join("");
-    return { track_name, artist_name };
+    return { trackName, artistName };
 }
 
-function get_playback_time_in_seconds(field: HTMLElement) {
+function getPlaybackTimeInSeconds(field: HTMLElement) {
     // TODO improve this function to extract values
     const time = field?.innerText ?? "";
 
@@ -76,49 +84,49 @@ function get_playback_time_in_seconds(field: HTMLElement) {
 
 async function init() {
     await waitForElement(() => {
-        return document.querySelector(".main-view-container__scroll-node-child") !== null;
+        return document.querySelector(spotifyMainSectionQuery) !== null;
     });
 
     const lyricsModal = new LyricsModal();
     lyricsModal.inject();
 
     await waitForElement(() => {
-        return document.querySelector("[data-testid='control-button-npv']") !== null;
+        return document.querySelector(iconBarQuery) !== null;
     });
 
     const lyricsButton = new LyricButton(lyricsModal);
-    inject_lyrics_button(lyricsButton);
+    injectLyricsButton(lyricsButton);
 
     await waitForElement(() => {
-        return document.querySelector(track_name_query) !== null && document.querySelector(artist_name_query) !== null;
+        return document.querySelector(trackNameQuery) !== null && document.querySelector(artistNameQuery) !== null;
     });
 
     await waitForElement(() => {
         return (
-            document.querySelector("[data-testid='now-playing-widget']") !== null &&
-            document.querySelector("[data-testid='progress-bar']") !== null &&
-            document.querySelector("[data-testid='playback-position']") !== null
+            document.querySelector(playingWidgetQuery) !== null &&
+            document.querySelector(progressBarQuery) !== null &&
+            document.querySelector(playbackPositionQuery) !== null
         );
     });
 
-    const widget = document.querySelector<HTMLElement>("[data-testid='now-playing-widget']")!;
-    const playback_time_trigger = document.querySelector<HTMLElement>("[data-testid='progress-bar']")!;
-    const playback_time_field = document.querySelector<HTMLElement>("[data-testid='playback-position']")!;
+    const widget = document.querySelector<HTMLElement>(playingWidgetQuery)!;
+    const playback_time_trigger = document.querySelector<HTMLElement>(progressBarQuery)!;
+    const playback_time_field = document.querySelector<HTMLElement>(playbackPositionQuery)!;
 
     async function handleTrackName() {
-        const { track_name, artist_name } = get_track_info();
+        const { trackName, artistName } = getTrackInfo();
 
         let lyrics: LyricsWithTimestamp[];
 
-        if (songCache.has(track_name, artist_name)) {
-            lyrics = songCache.get(track_name, artist_name)!;
+        if (songCache.has(trackName, artistName)) {
+            lyrics = songCache.get(trackName, artistName)!;
         } else {
-            const songs = await search_songs(track_name, artist_name);
+            const songs = await searchSong(trackName, artistName);
 
             for (const song of songs) {
                 if (song.syncedLyrics) {
-                    const timed_lyrics = parse_song_lyrics(song.syncedLyrics);
-                    songCache.set(track_name, artist_name, timed_lyrics);
+                    const timed_lyrics = parseSongLyrics(song.syncedLyrics);
+                    songCache.set(trackName, artistName, timed_lyrics);
                     lyrics = timed_lyrics;
                     break;
                 }
@@ -132,17 +140,17 @@ async function init() {
     }
 
     function handleTime() {
-        const time = get_playback_time_in_seconds(playback_time_field);
+        const time = getPlaybackTimeInSeconds(playback_time_field);
 
-        lyricsModal.updateCurrentRow(time);
+        lyricsModal.setCurrentRowFromTime(time);
         lyricsModal.render();
     }
 
     handleTrackName();
-    subscribe_mutation(widget, () => handleTrackName());
+    subscribeMutation(widget, () => handleTrackName());
 
     handleTime();
-    subscribe_mutation(playback_time_trigger, () => handleTime());
+    subscribeMutation(playback_time_trigger, () => handleTime());
 }
 
 init().catch((err) => console.error(err));

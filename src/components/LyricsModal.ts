@@ -1,9 +1,11 @@
-import { get_current_lyric_row_index } from "../utils.js";
+import { spotifyMainSectionQuery } from "../config.js";
+import type { LyricsWithTimestamp } from "../types/index.js";
+import { getCurrentLyricRowIndex } from "../utils.js";
 import { LyricRow } from "./LyricRow.js";
 
 interface LyricsModalState {
     hidden: boolean;
-    lyrics: { timestamp: number; lyrics: string }[];
+    lyrics: LyricsWithTimestamp[];
     current_row: number;
     scroll_to_row: boolean;
 }
@@ -28,8 +30,7 @@ export class LyricsModal {
         this.#modalNode = modal;
 
         // TODO better null checks
-        this.#spotify_main = document.querySelector<HTMLElement>(".main-view-container__scroll-node-child")!
-            .parentNode! as HTMLElement;
+        this.#spotify_main = document.querySelector<HTMLElement>(spotifyMainSectionQuery)!.parentNode! as HTMLElement;
 
         const container = this.#spotify_main.cloneNode() as HTMLElement;
         container.innerHTML = "";
@@ -60,21 +61,21 @@ export class LyricsModal {
                 this.#modalNode.append(row.getNode());
             }
 
-            row.updateText(lyricsRow.lyrics);
+            row.setText(lyricsRow.lyrics);
 
             if (i > this.#state.current_row) {
-                row.updateKind("next");
+                row.setKind("next");
             } else if (i === this.#state.current_row) {
-                row.updateKind("current");
+                row.setKind("current");
 
                 if (this.#state.scroll_to_row) {
                     row.scrollIntoView();
                 }
             } else {
-                row.updateKind("passed");
+                row.setKind("passed");
             }
 
-            row.update();
+            row.render();
         }
 
         if (this.#rows.length > this.#state.lyrics.length) {
@@ -86,8 +87,8 @@ export class LyricsModal {
         }
     }
 
-    updateCurrentRow(time: number) {
-        let i = get_current_lyric_row_index(this.#state.lyrics, time);
+    setCurrentRowFromTime(time: number) {
+        let i = getCurrentLyricRowIndex(this.#state.lyrics, time);
         this.#state.current_row = i;
     }
 
@@ -105,7 +106,6 @@ export class LyricsModal {
         this.#container.remove();
     }
 
-    /** @param {(old : any) => void } updater  */
     updateState(updater: (state: LyricsModalState) => void) {
         updater(this.#state);
         this.render();

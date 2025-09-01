@@ -1,6 +1,6 @@
 import type { LyricsWithTimestamp, SongInfo } from "./types/index.js";
 
-export function class_list_toggle(classList: DOMTokenList, className: string, state: boolean) {
+export function classlistToggle(classList: DOMTokenList, className: string, state: boolean) {
     const has = classList.contains(className);
 
     if (state && !has) {
@@ -12,7 +12,7 @@ export function class_list_toggle(classList: DOMTokenList, className: string, st
     }
 }
 
-export function subscribe_mutation(element: HTMLElement, onChange: () => void) {
+export function subscribeMutation(element: HTMLElement, onChange: () => void) {
     const observer = new MutationObserver(onChange);
     const config = { attributes: true, childList: true, subtree: true };
 
@@ -40,7 +40,7 @@ export async function waitForElement(check: () => boolean) {
     });
 }
 
-export function get_current_lyric_row_index(lyrics_with_timestamp: LyricsWithTimestamp[], timestamp: number) {
+export function getCurrentLyricRowIndex(lyrics_with_timestamp: LyricsWithTimestamp[], timestamp: number) {
     for (let i = 0; i < lyrics_with_timestamp.length; i++) {
         let row = lyrics_with_timestamp[i]!;
 
@@ -57,9 +57,9 @@ export function get_current_lyric_row_index(lyrics_with_timestamp: LyricsWithTim
 }
 
 /**
- * An helper function that parses the lyrics and divides them in an object that returns the second of the track
+ * An helper function that parses the lyrics and divides them in an array of object that returns the second of the track and the lyrics
  */
-export function parse_song_lyrics(syncedLyrics: NonNullable<SongInfo["syncedLyrics"]>): LyricsWithTimestamp[] {
+export function parseSongLyrics(syncedLyrics: NonNullable<SongInfo["syncedLyrics"]>): LyricsWithTimestamp[] {
     const lines = syncedLyrics.split("\n");
     // The result array has this object ({timestamp : number , lyrics : string})
     const results = new Array(lines.length);
