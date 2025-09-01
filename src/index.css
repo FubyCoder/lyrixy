@@ -48,3 +48,14 @@
 .lyrics-button-active:hover {
     color: var(--lyricxy-icon-active);
 }
+
+.lyrics-error {
+    font-size: 2rem;
+    font-family: "SpotifyMixUI";
+    font-weight: 700;
+    margin-bottom: 8px;
+    min-height: 2rem;
+    width: 100%;
+    transition: color 0.5s ease;
+    color: var(--lyricxy-lyric-current);
+}

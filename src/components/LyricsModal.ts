@@ -6,6 +6,7 @@ import { LyricRow } from "./LyricRow.js";
 interface LyricsModalState {
     hidden: boolean;
     lyrics: LyricsWithTimestamp[];
+    error: string | null;
     current_row: number;
     scroll_to_row: boolean;
 }
@@ -15,11 +16,15 @@ export class LyricsModal {
     #spotify_main: HTMLElement;
     #container: HTMLElement;
 
+    #rowContainer: HTMLElement;
     #rows: LyricRow[] = [];
+
+    #errorNode: HTMLElement;
 
     #state: LyricsModalState = {
         hidden: true,
         lyrics: [],
+        error: null,
         current_row: 0,
         scroll_to_row: true,
     };
@@ -37,6 +42,14 @@ export class LyricsModal {
         container.style.display = "none";
         container.style.overflow = "auto";
         this.#container = container;
+
+        this.#rowContainer = document.createElement("div");
+        this.#errorNode = document.createElement("p");
+        this.#errorNode.style.display = "none";
+        this.#errorNode.classList.add("lyrics-error");
+
+        this.#modalNode.append(this.#errorNode);
+        this.#modalNode.append(this.#rowContainer);
     }
 
     render() {
@@ -48,6 +61,18 @@ export class LyricsModal {
             this.#container.style.removeProperty("display");
             this.#spotify_main.style.display = "none";
         }
+
+        if (this.#state.error) {
+            if (this.#errorNode.innerText !== this.#state.error) {
+                this.#errorNode.innerText = this.#state.error;
+            }
+
+            this.#rowContainer.style.display = "none";
+            this.#errorNode.style.removeProperty("display");
+        } else {
+            this.#rowContainer.style.removeProperty("display");
+            this.#errorNode.style.display = "none";
+        }
     }
 
     #renderLyrics() {
@@ -58,7 +83,7 @@ export class LyricsModal {
             if (!row) {
                 row = new LyricRow();
                 this.#rows.push(row);
-                this.#modalNode.append(row.getNode());
+                this.#rowContainer.append(row.getNode());
             }
 
             row.setText(lyricsRow.lyrics);

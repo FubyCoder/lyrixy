@@ -32,19 +32,32 @@ function injectLyricsButton(button: LyricButton) {
  * @param trackName name of the song
  * @param artistName name of the artist(s) of the song
  */
-async function searchSong(trackName: string, artistName: string): Promise<SongInfo[]> {
+async function searchSong(
+    trackName: string,
+    artistName: string,
+    opts: { signal?: AbortSignal } = {},
+): Promise<{ error: false; data: SongInfo[] } | { error: true; data: null; code: "ApiError" | "Abort" }> {
     const params = new URLSearchParams();
     params.set("track_name", trackName);
     params.set("artist_name", artistName);
 
-    // TODO add abort controller
+    try {
+        const result = await fetch(API_BASE_URL + "/api/search?" + params.toString(), { signal: opts.signal ?? null });
 
-    return await fetch(API_BASE_URL + "/api/search?" + params.toString()).then((res) => {
-        if (!res.ok) {
-            throw new Error("failed_to_fetch_song_info");
+        if (!result.ok) {
+            return { error: true, data: null, code: "ApiError" };
         }
-        return res.json();
-    });
+
+        const songs = await result.json();
+
+        return { error: false, data: songs };
+    } catch (err: any) {
+        let code: "ApiError" | "Abort" = "ApiError";
+        if (err?.name === "AbortError") {
+            code = "Abort";
+        }
+        return { error: true, data: null, code: code };
+    }
 }
 
 function getTrackInfo() {
@@ -59,27 +72,9 @@ function getTrackInfo() {
 }
 
 function getPlaybackTimeInSeconds(field: HTMLElement) {
-    // TODO improve this function to extract values
     const time = field?.innerText ?? "";
-
-    let hours = 0;
-    let minutes = 0;
-    let seconds = 0;
-
-    // 5 => 2 for minutes, 1 x ':' and 2 x seconds
-    if (time.length <= 5) {
-        const [m, s] = time.split(":").map(Number);
-        minutes = m!;
-        seconds = s!;
-    } else {
-        // Should never happen with songs but i don't trust artists
-        const [h, m, s] = time.split(":").map(Number);
-        hours = h!;
-        minutes = m!;
-        seconds = s!;
-    }
-
-    return hours * 60 * 60 + minutes * 60 + seconds;
+    const [m, s] = time.split(":").map(Number);
+    return (m ?? 0) * 60 + (s ?? 0);
 }
 
 async function init() {
@@ -113,16 +108,52 @@ async function init() {
     const playback_time_trigger = document.querySelector<HTMLElement>(progressBarQuery)!;
     const playback_time_field = document.querySelector<HTMLElement>(playbackPositionQuery)!;
 
+    let abortController: AbortController | null = null;
+
     async function handleTrackName() {
         const { trackName, artistName } = getTrackInfo();
 
-        let lyrics: LyricsWithTimestamp[];
+        let lyrics: LyricsWithTimestamp[] = [];
+        lyricsModal.updateState((old) => {
+            old.error = "Loading lyrics...";
+            old.lyrics = [];
+            old.current_row = 0;
+        });
 
         if (songCache.has(trackName, artistName)) {
             lyrics = songCache.get(trackName, artistName)!;
         } else {
-            const songs = await searchSong(trackName, artistName);
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
 
+            abortController = new AbortController();
+            const result = await searchSong(trackName, artistName, { signal: abortController.signal });
+            abortController = null;
+
+            if (result.error) {
+                lyricsModal.updateState((old) => {
+                    if (result.code !== "Abort") {
+                        old.error = "Failed to load song lyrics";
+                    }
+                    old.lyrics = [];
+                    old.current_row = 0;
+                });
+
+                return;
+            }
+
+            if (result.data.length === 0) {
+                lyricsModal.updateState((old) => {
+                    old.error = "This song doesn't have any lyrics";
+                    old.lyrics = [];
+                    old.current_row = 0;
+                });
+                return;
+            }
+
+            const songs = result.data;
             for (const song of songs) {
                 if (song.syncedLyrics) {
                     const timed_lyrics = parseSongLyrics(song.syncedLyrics);
@@ -131,12 +162,26 @@ async function init() {
                     break;
                 }
             }
+
+            if (!lyrics || lyrics.length === 0) {
+                const song = songs[0];
+                if (song?.instrumental) {
+                    lyricsModal.updateState((old) => {
+                        old.error = "This song doesn't have any lyrics";
+                        old.lyrics = [];
+                        old.current_row = 0;
+                    });
+                }
+            }
         }
 
-        lyricsModal.updateState((old) => {
-            old.lyrics = lyrics;
-            old.current_row = 0;
-        });
+        if (lyrics && lyrics.length > 0) {
+            lyricsModal.updateState((old) => {
+                old.error = null;
+                old.lyrics = lyrics;
+                old.current_row = 0;
+            });
+        }
     }
 
     function handleTime() {
