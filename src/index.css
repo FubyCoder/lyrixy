@@ -1,0 +1,50 @@
+:root {
+    --lyricxy-lyric-current: #ffffff;
+    --lyricxy-lyric-next: #dadada92;
+    --lyricxy-lyric-passed: #cccccc62;
+    --lyricxy-modal: #0e602b;
+    --lyricxy-icon-active: #1db954;
+    --lyricxy-icon-hover: #ffffff;
+}
+
+.lyric-row {
+    font-size: 2rem;
+    font-family: "SpotifyMixUI";
+    font-weight: 700;
+    margin-bottom: 8px;
+    min-height: 2rem;
+    width: 100%;
+    transition: color 0.5s ease;
+    color: var(--lyricxy-lyric-next);
+}
+
+.lyric-row-passed {
+    color: var(--lyricxy-lyric-passed);
+}
+
+.lyric-row-current {
+    color: var(--lyricxy-lyric-current);
+}
+
+.lyric-modal {
+    min-height: 100%;
+    background-color: #0e602b;
+    padding-top: 128px;
+    padding-bottom: 128px;
+    padding-left: 64px;
+    padding-right: 64px;
+}
+
+.lyrics-button {
+    transition: color 0.5s ease;
+}
+
+.lyrics-button:hover {
+    cursor: pointer;
+    color: var(--lyricxy-icon-hover);
+}
+
+.lyrics-button-active,
+.lyrics-button-active:hover {
+    color: var(--lyricxy-icon-active);
+}
