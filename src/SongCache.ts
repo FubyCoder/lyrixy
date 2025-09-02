@@ -23,7 +23,9 @@ export class SongCache {
     set(trackName: string, artistName: string, lyrics: LyricsWithTimestamp[]) {
         const key = this.#createKey(trackName, artistName);
         this.#cache_last_usage.set(key, Date.now);
-        return this.#cache.set(key, lyrics);
+        this.#cache.set(key, lyrics);
+
+        this.cleanup();
     }
 
     has(trackName: string, artistName: string) {
@@ -31,7 +33,7 @@ export class SongCache {
         return this.#cache.has(key);
     }
 
-    cleaup() {
+    cleanup() {
         if (this.#cache_last_usage.size < this.#capacity) {
             return;
         }
