@@ -11,11 +11,18 @@ Linux / MacOs
 pnpm build
 ```
 
-Windows
+Windows (use WSL)
 ```sh
-pnpm vite build
-copy ".\src\manifest.json" ".\dist\manifest.json"
+pnpm build
 ```
+
+Or without WSL:
+ - Run `pnpm build`
+ - Create dirs `./dist/chrome` `./dist/firefox`
+ - Copy content of `./build` in both `./dist/chrome` `./dist/firefox`
+ - (For Firefox) Copy `./src/manifest.firefox.json` to `./dist/firefox` as `manifest.json`
+ - (For Chrome/Chromium) Copy `./src/manifest.chrome.json` to `./dist/chrome` as `manifest.json`
+
 
 ## How to install
 In Firefox: Open the about:debugging page, click the This Firefox option, click the Load Temporary Add-on button, then select any file in your extension's directory.
