@@ -73,9 +73,9 @@ function getTrackInfo() {
     const playback_duration_field = getSongDurationElement()!;
 
     const durationInMs = playback_duration_field.getAttribute("max");
-    const seconds = durationInMs === null ? null : +durationInMs / 1000;
+    const duration = durationInMs === null ? null : +durationInMs / 1000;
 
-    return { trackName, artistName, seconds };
+    return { trackName, artistName, duration };
 }
 
 function getPlaybackTimeInSeconds(field: HTMLElement) {
@@ -119,7 +119,7 @@ async function init() {
     let abortController: AbortController | null = null;
 
     async function handleTrackName() {
-        const { trackName, artistName, seconds } = getTrackInfo();
+        const { trackName, artistName, duration } = getTrackInfo();
 
         let lyrics: LyricsWithTimestamp[] = [];
         lyricsModal.updateState((old) => {
@@ -171,8 +171,8 @@ async function init() {
                     continue;
                 }
 
-                if (seconds !== null) {
-                    const delta = Math.abs(seconds - song.duration);
+                if (duration !== null) {
+                    const delta = Math.abs(duration - song.duration);
                     if (bestCandidate === null || delta < bestDelta) {
                         bestDelta = delta;
                         bestCandidate = song;
