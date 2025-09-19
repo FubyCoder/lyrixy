@@ -2,6 +2,7 @@ import { LyricButton } from "./components/LyricButton.js";
 import { LyricsModal } from "./components/LyricsModal.js";
 import {
     artistNameQuery,
+    getSongDurationElement,
     iconBarQuery,
     playbackPositionQuery,
     playingWidgetQuery,
@@ -68,7 +69,13 @@ function getTrackInfo() {
         .innerText!.split("\n")
         .map((item) => item.trim())
         .join("");
-    return { trackName, artistName };
+
+    const playback_duration_field = getSongDurationElement()!;
+
+    const durationInMs = playback_duration_field.getAttribute("max");
+    const seconds = durationInMs === null ? null : +durationInMs / 1000;
+
+    return { trackName, artistName, seconds };
 }
 
 function getPlaybackTimeInSeconds(field: HTMLElement) {
@@ -100,7 +107,8 @@ async function init() {
         return (
             document.querySelector(playingWidgetQuery) !== null &&
             document.querySelector(progressBarQuery) !== null &&
-            document.querySelector(playbackPositionQuery) !== null
+            document.querySelector(playbackPositionQuery) !== null &&
+            getSongDurationElement() !== null
         );
     });
 
@@ -111,7 +119,7 @@ async function init() {
     let abortController: AbortController | null = null;
 
     async function handleTrackName() {
-        const { trackName, artistName } = getTrackInfo();
+        const { trackName, artistName, seconds } = getTrackInfo();
 
         let lyrics: LyricsWithTimestamp[] = [];
         lyricsModal.updateState((old) => {
@@ -154,13 +162,31 @@ async function init() {
             }
 
             const songs = result.data;
+
+            let bestCandidate: SongInfo | null = null;
+            let bestDelta: number = Infinity;
+
             for (const song of songs) {
-                if (song.syncedLyrics) {
-                    const timed_lyrics = parseSongLyrics(song.syncedLyrics);
-                    songCache.set(trackName, artistName, timed_lyrics);
-                    lyrics = timed_lyrics;
+                if (!song.syncedLyrics) {
+                    continue;
+                }
+
+                if (seconds !== null) {
+                    const delta = Math.abs(seconds - song.duration);
+                    if (bestCandidate === null || delta < bestDelta) {
+                        bestDelta = delta;
+                        bestCandidate = song;
+                    }
+                } else {
+                    bestCandidate = song;
                     break;
                 }
+            }
+
+            if (bestCandidate?.syncedLyrics) {
+                const timed_lyrics = parseSongLyrics(bestCandidate.syncedLyrics);
+                songCache.set(trackName, artistName, timed_lyrics);
+                lyrics = timed_lyrics;
             }
 
             if (!lyrics || lyrics.length === 0) {
