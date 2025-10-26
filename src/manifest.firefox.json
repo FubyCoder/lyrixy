@@ -1,7 +1,7 @@
 {
     "description": "",
     "manifest_version": 2,
-    "name": "LyriXy",
+    "name": "Lyrixy",
     "version": "0.1",
     "content_scripts": [
         {

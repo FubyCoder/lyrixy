@@ -1,4 +1,5 @@
 export interface LyricsWithTimestamp {
+    // Timestamp in seconds
     timestamp: number;
     lyrics: string;
 }

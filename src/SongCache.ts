@@ -3,7 +3,7 @@ import type { LyricsWithTimestamp } from "./types/index.js";
 export class SongCache {
     // Using a array should be faster if we cache the index in the map for faster lookups
     #cache = new Map();
-    #cache_last_usage = new Map();
+    #cacheUsage = new Map();
     #capacity;
 
     constructor(capacity: number = 50) {
@@ -16,13 +16,13 @@ export class SongCache {
 
     get(trackName: string, artistName: string): LyricsWithTimestamp[] | null {
         const key = this.#createKey(trackName, artistName);
-        this.#cache_last_usage.set(key, Date.now);
+        this.#cacheUsage.set(key, Date.now);
         return this.#cache.get(key);
     }
 
     set(trackName: string, artistName: string, lyrics: LyricsWithTimestamp[]) {
         const key = this.#createKey(trackName, artistName);
-        this.#cache_last_usage.set(key, Date.now);
+        this.#cacheUsage.set(key, Date.now);
         this.#cache.set(key, lyrics);
 
         this.cleanup();
@@ -34,14 +34,14 @@ export class SongCache {
     }
 
     cleanup() {
-        if (this.#cache_last_usage.size < this.#capacity) {
+        if (this.#cacheUsage.size < this.#capacity) {
             return;
         }
 
         let lastItem = null;
         let lastItemTimestamp = Infinity;
 
-        for (const [key, entry] of this.#cache_last_usage.entries()) {
+        for (const [key, entry] of this.#cacheUsage.entries()) {
             if (lastItemTimestamp > entry) {
                 lastItemTimestamp = entry;
                 lastItem = key;
@@ -51,7 +51,7 @@ export class SongCache {
         // Shouldnt happen but better be sure
         if (lastItem !== null) {
             this.#cache.delete(lastItem);
-            this.#cache_last_usage.delete(lastItem);
+            this.#cacheUsage.delete(lastItem);
         }
     }
 }

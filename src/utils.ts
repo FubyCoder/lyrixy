@@ -40,9 +40,9 @@ export async function waitForElement(check: () => boolean) {
     });
 }
 
-export function getCurrentLyricRowIndex(lyrics_with_timestamp: LyricsWithTimestamp[], timestamp: number) {
-    for (let i = 0; i < lyrics_with_timestamp.length; i++) {
-        let row = lyrics_with_timestamp[i]!;
+export function getCurrentLyricRowIndex(lyricsWithTimestamp: LyricsWithTimestamp[], timestamp: number) {
+    for (let i = 0; i < lyricsWithTimestamp.length; i++) {
+        let row = lyricsWithTimestamp[i]!;
 
         if (row.timestamp > timestamp) {
             if (i === 0) {
@@ -53,7 +53,7 @@ export function getCurrentLyricRowIndex(lyrics_with_timestamp: LyricsWithTimesta
         }
     }
 
-    return lyrics_with_timestamp.length - 1;
+    return lyricsWithTimestamp.length - 1;
 }
 
 /**
@@ -69,9 +69,9 @@ export function parseSongLyrics(syncedLyrics: NonNullable<SongInfo["syncedLyrics
         const line = lines[i]!;
 
         const time = parseInt(line.slice(1, 3), 10) * 60 + parseInt(line.slice(4, 6), 10);
-        const lyrics_line = line.slice(11);
+        const lyricsLine = line.slice(11);
 
-        results[i] = { timestamp: time, lyrics: lyrics_line };
+        results[i] = { timestamp: time, lyrics: lyricsLine };
     }
 
     return results;

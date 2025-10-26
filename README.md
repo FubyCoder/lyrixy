@@ -1,4 +1,4 @@
-# LyricXy
+# Lyrixy
 
 A simple fifefox extension to display spotify lyrics
 
@@ -30,9 +30,7 @@ In Firefox: Open the about:debugging page, click the This Firefox option, click 
 The extension now installs, and remains installed until you restart Firefox.
 
 ## How does it work ?
-This project injects a new button in the spotify bottom-right section that allows us to display a new modal in full screen (similar to spotify native lyrics page).
-
-Then we the currently playing song using the generous [LRCLIB](https://lrclib.net) and we sync the lyrics with the current song timestamp
+If the user is in the /lyrics page of spotify and the song doesn't have official lyrics, this extension injects a new view with lyrics provided by [LRCLIB](https://lrclib.net)
 
 ## Contribution
 This is mainly a personal project so I will not merge PRs or edit much of this, unless is something i personally need

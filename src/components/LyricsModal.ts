@@ -1,4 +1,3 @@
-import { spotifyMainSectionQuery } from "../config.js";
 import type { LyricsWithTimestamp } from "../types/index.js";
 import { getCurrentLyricRowIndex } from "../utils.js";
 import { LyricRow } from "./LyricRow.js";
@@ -7,17 +6,19 @@ interface LyricsModalState {
     hidden: boolean;
     lyrics: LyricsWithTimestamp[];
     error: string | null;
-    current_row: number;
-    scroll_to_row: boolean;
+    currentRow: number;
+    scrollToRow: boolean;
+
+    onLyricRowClick: (timestamp: number) => void;
 }
 
 export class LyricsModal {
     #modalNode: HTMLDivElement;
-    #spotify_main: HTMLElement;
-    #container: HTMLElement;
 
     #rowContainer: HTMLElement;
     #rows: LyricRow[] = [];
+
+    #credits: HTMLElement;
 
     #errorNode: HTMLElement;
 
@@ -25,8 +26,10 @@ export class LyricsModal {
         hidden: true,
         lyrics: [],
         error: null,
-        current_row: 0,
-        scroll_to_row: true,
+        currentRow: 0,
+        scrollToRow: true,
+
+        onLyricRowClick: () => {},
     };
 
     constructor() {
@@ -34,43 +37,35 @@ export class LyricsModal {
         modal.classList.add("lyric-modal");
         this.#modalNode = modal;
 
-        // TODO better null checks
-        this.#spotify_main = document.querySelector<HTMLElement>(spotifyMainSectionQuery)!.parentNode! as HTMLElement;
-
-        const container = this.#spotify_main.cloneNode() as HTMLElement;
-        container.innerHTML = "";
-        container.style.display = "none";
-        container.style.overflow = "auto";
-        this.#container = container;
-
         this.#rowContainer = document.createElement("div");
+        this.#rowContainer.classList.add("lyrics-container");
         this.#errorNode = document.createElement("p");
         this.#errorNode.style.display = "none";
         this.#errorNode.classList.add("lyrics-error");
 
+        this.#credits = document.createElement("p");
+        this.#credits.classList.add("lyrics-credits");
+        this.#credits.innerHTML =
+            "Lyrics provided by <a href='https://github.com/tranxuanthang/lrclib'>LRCLIB project</a> and Lyrixy extension";
+
         this.#modalNode.append(this.#errorNode);
         this.#modalNode.append(this.#rowContainer);
+        this.#modalNode.append(this.#credits);
     }
 
     render() {
-        if (this.#state.hidden) {
-            this.#container.style.display = "none";
-            this.#spotify_main.style.removeProperty("display");
-        } else {
-            this.#renderLyrics();
-            this.#container.style.removeProperty("display");
-            this.#spotify_main.style.display = "none";
-        }
+        this.#renderLyrics();
 
         if (this.#state.error) {
             if (this.#errorNode.innerText !== this.#state.error) {
                 this.#errorNode.innerText = this.#state.error;
             }
 
-            this.#rowContainer.style.display = "none";
             this.#errorNode.style.removeProperty("display");
+            this.#credits.style.display = "none";
         } else {
             this.#rowContainer.style.removeProperty("display");
+            this.#credits.style.removeProperty("display");
             this.#errorNode.style.display = "none";
         }
     }
@@ -87,13 +82,15 @@ export class LyricsModal {
             }
 
             row.setText(lyricsRow.lyrics);
+            row.setTimetamp(lyricsRow.timestamp);
+            row.setOnClick(this.#state.onLyricRowClick);
 
-            if (i > this.#state.current_row) {
+            if (i > this.#state.currentRow) {
                 row.setKind("next");
-            } else if (i === this.#state.current_row) {
+            } else if (i === this.#state.currentRow) {
                 row.setKind("current");
 
-                if (this.#state.scroll_to_row) {
+                if (this.#state.scrollToRow) {
                     row.scrollIntoView();
                 }
             } else {
@@ -114,25 +111,22 @@ export class LyricsModal {
 
     setCurrentRowFromTime(time: number) {
         let i = getCurrentLyricRowIndex(this.#state.lyrics, time);
-        this.#state.current_row = i;
-    }
-
-    inject() {
-        // TODO : better null checks
-        const root = this.#spotify_main.parentNode!;
-        this.#container.append(this.#modalNode);
-        root.append(this.#container);
+        this.#state.currentRow = i;
     }
 
     remove() {
         this.#state.hidden = true;
         this.render();
         this.#modalNode.remove();
-        this.#container.remove();
     }
 
     updateState(updater: (state: LyricsModalState) => void) {
         updater(this.#state);
+
+        for (const row of this.#rows) {
+            row.setOnClick(this.#state.onLyricRowClick);
+        }
+
         this.render();
     }
 

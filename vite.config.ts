@@ -22,7 +22,7 @@ export default defineConfig({
                 index: resolve(__dirname, "src/index.ts"),
                 "index.css": resolve(__dirname, "src/index.css"),
             },
-            name: "lyricxy",
+            name: "lyrixy",
         },
     },
 

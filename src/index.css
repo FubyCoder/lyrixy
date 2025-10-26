@@ -1,52 +1,71 @@
 :root {
-    --lyricxy-lyric-current: #ffffff;
-    --lyricxy-lyric-next: #dadada92;
-    --lyricxy-lyric-passed: #cccccc62;
-    --lyricxy-modal: #0e602b;
-    --lyricxy-icon-active: #1db954;
-    --lyricxy-icon-hover: #ffffff;
+    --lyrixy-lyric-current: #ffffff;
+    --lyrixy-lyric-next: #dadada92;
+    --lyrixy-lyric-passed: #cccccc62;
+    --lyrixy-modal: #0e602b;
+
+    /*Official spotify default font-size with fallback if the css-variable is removed by spotify*/
+    --lyrixy-font-size: var(--encore-text-size-larger-2, 1.5rem);
+}
+
+.lyrics-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .lyric-row {
+    /* This is the same formula used by spotify official lyrics section */
+    width: min(100% - 2 * 64px, 1024px);
+
     font-size: 2rem;
     font-family: "SpotifyMixUI";
     font-weight: 700;
     margin-bottom: 8px;
     min-height: 2rem;
-    width: 100%;
+    font-size: var(--lyrixy-font-size);
     transition: color 0.5s ease;
-    color: var(--lyricxy-lyric-next);
+    color: var(--lyrixy-lyric-next);
+    text-wrap: balance;
+}
+
+.lyric-row:hover {
+    text-decoration: underline;
+    cursor: pointer;
+    color: var(--lyrixy-lyric-current);
+}
+
+@container (width > 800px) {
+    .lyric-row {
+        /*Official spotify font-size at 800px screen width with fallback if the css-variable is removed by spotify*/
+        --lyrixy-font-size: var(--encore-text-size-larger-3, 2rem);
+    }
+}
+
+@container (width > 1600px) {
+    .lyric-row {
+        /*Official spotify font-size at 1600px screen width with fallback if the css-variable is removed by spotify*/
+        --lyrixy-font-size: var(--encore-text-size-larger-4, 2.5rem);
+    }
 }
 
 .lyric-row-passed {
-    color: var(--lyricxy-lyric-passed);
+    color: var(--lyrixy-lyric-passed);
 }
 
 .lyric-row-current {
-    color: var(--lyricxy-lyric-current);
+    color: var(--lyrixy-lyric-current);
 }
 
 .lyric-modal {
-    min-height: 100%;
     background-color: #0e602b;
-    padding-top: 128px;
-    padding-bottom: 128px;
-    padding-left: 64px;
-    padding-right: 64px;
+    padding: 64px 20px;
+    width: 100%;
 }
 
-.lyrics-button {
-    transition: color 0.5s ease;
-}
-
-.lyrics-button:hover {
-    cursor: pointer;
-    color: var(--lyricxy-icon-hover);
-}
-
-.lyrics-button-active,
-.lyrics-button-active:hover {
-    color: var(--lyricxy-icon-active);
+.lyrics-credits {
+    font-size: 0.875rem;
+    opacity: 0.8;
 }
 
 .lyrics-error {
@@ -57,5 +76,5 @@
     min-height: 2rem;
     width: 100%;
     transition: color 0.5s ease;
-    color: var(--lyricxy-lyric-current);
+    color: var(--lyrixy-lyric-current);
 }

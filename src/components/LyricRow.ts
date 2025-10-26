@@ -3,12 +3,16 @@ import { classlistToggle } from "../utils.js";
 interface LyricRowState {
     kind: "next" | "current" | "passed";
     text: string;
+    timestamp: number;
+    onClick?: ((timestamp: number) => void) | undefined;
 }
 
 export class LyricRow {
     #state: LyricRowState = {
         kind: "next",
         text: "",
+        timestamp: 0,
+        onClick: undefined,
     };
 
     #node: HTMLDivElement;
@@ -16,6 +20,8 @@ export class LyricRow {
     constructor() {
         this.#node = document.createElement("div");
         this.#node.classList.add("lyric-row");
+
+        this.#node.addEventListener("click", this.#onClick.bind(this));
     }
 
     setKind(kind: "next" | "current" | "passed") {
@@ -23,7 +29,25 @@ export class LyricRow {
     }
 
     setText(text: string) {
-        this.#state.text = text;
+        if (text.trim() === "") {
+            this.#state.text = "♪";
+        } else {
+            this.#state.text = text;
+        }
+    }
+
+    setTimetamp(timpestamp: number) {
+        this.#state.timestamp = timpestamp;
+    }
+
+    #onClick() {
+        if (this.#state.onClick) {
+            this.#state.onClick(this.#state.timestamp);
+        }
+    }
+
+    setOnClick(onClick: NonNullable<LyricRowState["onClick"]>) {
+        this.#state.onClick = onClick;
     }
 
     render() {
