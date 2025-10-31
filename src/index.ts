@@ -1,347 +1,212 @@
-import { LyricsModal } from "./components/LyricsModal.js";
+import { createExtension, type Track } from "./extension.js";
+import { findBestLyrics, searchSong } from "./lrclib.js";
+import { LyricsCache } from "./lyrics-cache.js";
 import {
-    artistNameQuery,
-    getSongDurationElement,
-    lyricsButtonQuery,
-    playbackPositionQuery,
-    playingWidgetQuery,
-    progressBarQuery,
-    spotifyMainSectionQuery,
-    trackNameQuery,
-} from "./config.js";
-import { SongCache } from "./SongCache.js";
-import type { LyricsWithTimestamp, SongInfo } from "./types/index.js";
-import { parseSongLyrics, subscribeMutation, waitForElement } from "./utils.js";
+    getSpotifyPlayback,
+    getSpotifyTrackInfo,
+    spotifyArtistNameQuery,
+    spotifyLyricRowQuery,
+    spotifyLyricsButtonQuery,
+    spotifyMainContainerQuery,
+    spotifyPlaybackWidgetQuery,
+    spotifyProgressInputQuery,
+    spotifyTrackNameQuery,
+    updateSongPlaybackTime,
+} from "./spotify.js";
+import { getLyricsRowIndexFromTimestamp } from "./sync.js";
+import { subscribeMutation, waitForElement } from "./utils.js";
+import { LyricsView } from "./view.js";
 
-const API_BASE_URL = "https://lrclib.net";
+const $ = document.querySelector.bind(document);
 
-// Bottom middle section
-
-const SONG_CACHE_CAPACITY = 50;
-const songCache = new SongCache(SONG_CACHE_CAPACITY);
-
-/**
- * @param trackName name of the song
- * @param artistName name of the artist(s) of the song
- */
-async function searchSong(
-    trackName: string,
-    artistName: string,
-    opts: { signal?: AbortSignal } = {},
-): Promise<{ error: false; data: SongInfo[] } | { error: true; data: null; code: "ApiError" | "Abort" }> {
-    const params = new URLSearchParams();
-    params.set("track_name", trackName);
-    params.set("artist_name", artistName);
-
-    try {
-        const result = await fetch(API_BASE_URL + "/api/search?" + params.toString(), { signal: opts.signal ?? null });
-
-        if (!result.ok) {
-            return { error: true, data: null, code: "ApiError" };
-        }
-
-        const songs = await result.json();
-
-        return { error: false, data: songs };
-    } catch (err: any) {
-        let code: "ApiError" | "Abort" = "ApiError";
-        if (err?.name === "AbortError") {
-            code = "Abort";
-        }
-        return { error: true, data: null, code: code };
-    }
-}
-
-function getTrackInfo() {
-    // TODO better null checks here
-    const trackNameRootItem = document.querySelector<HTMLElement>(trackNameQuery)!;
-    const trackName = trackNameRootItem.innerText;
-
-    const isAd = trackNameRootItem.querySelector('[data-testid="ad-link"]') !== null;
-
-    const artistName = document
-        .querySelector<HTMLElement>(artistNameQuery)!
-        .innerText!.split("\n")
-        .map((item) => item.trim())
-        .join("");
-
-    const playbackDurationField = getSongDurationElement()!;
-
-    const durationInMs = playbackDurationField.getAttribute("max");
-    const duration = durationInMs === null ? null : +durationInMs / 1000;
-
-    return { trackName, artistName, duration, isAd };
-}
-
-function getPlaybackTimeInSeconds(field: HTMLElement) {
-    const time = field?.innerText ?? "";
-    const [m, s] = time.split(":").map(Number);
-    return (m ?? 0) * 60 + (s ?? 0);
-}
-
-function onLyricRowClick(inputElement: HTMLInputElement, timeInSeconds: number) {
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
-    setter.call(inputElement, (timeInSeconds * 1000).toString());
-
-    inputElement.dispatchEvent(new Event("input", { bubbles: true }));
-    inputElement.dispatchEvent(new Event("change", { bubbles: true }));
-}
+const lyricsCache = new LyricsCache(50);
 
 async function init() {
     await waitForElement(() => {
-        return document.querySelector(spotifyMainSectionQuery) !== null;
-    });
-
-    await waitForElement(() => {
-        return document.querySelector(trackNameQuery) !== null && document.querySelector(artistNameQuery) !== null;
-    });
-
-    await waitForElement(() => {
         return (
-            document.querySelector(playingWidgetQuery) !== null &&
-            document.querySelector(progressBarQuery) !== null &&
-            document.querySelector(playbackPositionQuery) !== null &&
-            getSongDurationElement() !== null
+            $(spotifyMainContainerQuery) !== null &&
+            $(spotifyPlaybackWidgetQuery) !== null &&
+            $(spotifyProgressInputQuery) !== null &&
+            $(spotifyLyricsButtonQuery) !== null
         );
     });
 
-    const widget = document.querySelector<HTMLElement>(playingWidgetQuery)!;
-    const playbackTimeTrigger = document.querySelector<HTMLElement>(progressBarQuery)!;
-    const playbackTimeField = document.querySelector<HTMLElement>(playbackPositionQuery)!;
+    const playbackWidget = $<HTMLElement>(spotifyPlaybackWidgetQuery)!;
+    const progressInputElement = $<HTMLInputElement>(spotifyProgressInputQuery)!;
+    const lyricButton = $<HTMLInputElement>(spotifyLyricsButtonQuery)!;
+    const mainSection = $<HTMLInputElement>(spotifyMainContainerQuery)!;
 
-    const hiddenInput = document
-        .querySelector('[data-testid="playback-progressbar"]')!
-        .querySelector<HTMLInputElement>("input")!;
+    const state = createExtension();
 
-    let abortController: AbortController | null = null;
+    function onRowClick(timestamp: number) {
+        updateSongPlaybackTime(progressInputElement, timestamp);
+    }
 
-    const lyricsModal = new LyricsModal();
+    const lyricsView = new LyricsView(onRowClick);
 
-    lyricsModal.updateState((state) => {
-        state.onLyricRowClick = (timestamp: number) => {
-            onLyricRowClick(hiddenInput, timestamp);
-        };
-    });
+    async function onTrackChange(track: Track) {
+        state.track = track;
+        state.lyrics = [];
+        state.message = "";
+        state.currentLyricRow = 0;
+        state.playback = 0;
+        // On song change if we are in the /lyrics page we should check if the song has official lyrics
 
-    async function handleTrackName() {
-        const { trackName, artistName, duration, isAd } = getTrackInfo();
-
-        let lyrics: LyricsWithTimestamp[] = [];
-
-        if (isAd) {
-            lyricsModal.updateState((old) => {
-                old.error = "Spotify Ad break...";
-                old.lyrics = [];
-                old.currentRow = 0;
-            });
+        if (window.location.pathname !== "/lyrics") {
             return;
         }
 
-        lyricsModal.updateState((old) => {
-            old.error = "Loading lyrics...";
-            old.lyrics = [];
-            old.currentRow = 0;
-        });
+        (mainSection.parentNode as HTMLElement).scrollIntoView({ behavior: "instant", block: "start" });
 
-        if (songCache.has(trackName, artistName)) {
-            lyrics = songCache.get(trackName, artistName)!;
-        } else {
-            if (abortController) {
-                abortController.abort();
-                abortController = null;
-            }
+        const lyricButton = $<HTMLInputElement>(spotifyLyricsButtonQuery)!;
+        const isActive = lyricButton.getAttribute("data-active") == "true";
 
-            abortController = new AbortController();
-            const result = await searchSong(trackName, artistName, { signal: abortController.signal });
-            abortController = null;
-
-            if (result.error) {
-                lyricsModal.updateState((old) => {
-                    if (result.code !== "Abort") {
-                        old.error = "Failed to load song lyrics";
-                    }
-                    old.lyrics = [];
-                    old.currentRow = 0;
-                });
-
-                return;
-            }
-
-            if (result.data.length === 0) {
-                lyricsModal.updateState((old) => {
-                    old.error = "This song doesn't have any lyrics";
-                    old.lyrics = [];
-                    old.currentRow = 0;
-                });
-                return;
-            }
-
-            const songs = result.data;
-
-            let bestCandidate: SongInfo | null = null;
-            let bestDelta: number = Infinity;
-
-            for (const song of songs) {
-                if (!song.syncedLyrics) {
-                    continue;
-                }
-
-                if (duration !== null) {
-                    const delta = Math.abs(duration - song.duration);
-                    if (bestCandidate === null || delta < bestDelta) {
-                        bestDelta = delta;
-                        bestCandidate = song;
-                    }
-                } else {
-                    bestCandidate = song;
-                    break;
-                }
-            }
-
-            if (bestCandidate?.syncedLyrics) {
-                const timedLyrics = parseSongLyrics(bestCandidate.syncedLyrics);
-                songCache.set(trackName, artistName, timedLyrics);
-                lyrics = timedLyrics;
-            }
-
-            if (!lyrics || lyrics.length === 0) {
-                const song = songs[0];
-                if (song?.instrumental) {
-                    lyricsModal.updateState((old) => {
-                        old.error = "This song doesn't have any lyrics";
-                        old.lyrics = [];
-                        old.currentRow = 0;
-                    });
-                }
-            }
+        // Why this ? We inject a custom screen in the main spotify container at the moment, i want to use the spotify lyrics when possible so this .click() enables that
+        if (lyricButton.disabled === undefined && !isActive) {
+            lyricButton.click();
         }
 
-        if (lyrics && lyrics.length > 0) {
-            lyricsModal.updateState((old) => {
-                old.error = null;
-                old.lyrics = lyrics;
-                old.currentRow = 0;
-            });
-        }
-    }
+        if (state.isOfficialLyricPage) {
+            // Check if the page has lyrics
+            const lyricsRows = document.querySelectorAll(spotifyLyricRowQuery);
+            state.hasOfficialLyrics = lyricsRows.length > 0;
 
-    function handleTime() {
-        const time = getPlaybackTimeInSeconds(playbackTimeField);
-
-        lyricsModal.setCurrentRowFromTime(time);
-        lyricsModal.render();
-    }
-
-    const mainSection = document.querySelector<HTMLDivElement>(spotifyMainSectionQuery)!;
-
-    let unsubscribeTrackName: null | (() => void) = null;
-    let unsubscribeTrackTime: null | (() => void) = null;
-
-    function cleanup() {
-        if (unsubscribeTrackName) {
-            unsubscribeTrackName();
-        }
-        if (unsubscribeTrackTime) {
-            unsubscribeTrackTime();
-        }
-    }
-
-    const mainContainer = document.querySelector(".main-view-container__scroll-node-child")!;
-    const spotifyLyricsSection = mainContainer.querySelector("main")!;
-
-    const customLyricsSection = document.createElement("div");
-    customLyricsSection.style.minHeight = "100%";
-    customLyricsSection.style.display = "flex";
-    customLyricsSection.append(lyricsModal.getNode());
-
-    const lyricButton = document.querySelector<HTMLButtonElement>(lyricsButtonQuery)!;
-
-    function onSpotifyPageChange(pathname: string) {
-        if (pathname !== "/lyrics") {
-            cleanup();
-            customLyricsSection.remove();
-            spotifyLyricsSection.style.removeProperty("display");
-            return;
+            mainSection.style.removeProperty("display");
+            lyricsView.destroy();
         }
 
-        spotifyLyricsSection.style.display = "none";
+        if (!state.hasOfficialLyrics) {
+            mainSection.style.display = "none";
+            mainSection.parentElement?.appendChild(lyricsView.getNode());
+            lyricsView.setCurrentRow(0);
 
-        customLyricsSection.style.minHeight = "100%";
-        customLyricsSection.style.display = "flex";
-        mainContainer.append(customLyricsSection);
-
-        const elements = document.querySelectorAll("[data-testid='fullscreen-lyric']");
-        let shouldUpdateData = elements.length <= 0;
-
-        function onWidgetChange() {
-            if (lyricButton.disabled) {
-                lyricButton.disabled = false;
-                lyricButton.style.cursor = "pointer";
-                lyricButton.addEventListener(
-                    "click",
-                    () => {
-                        history.pushState({}, "", "/lyrics");
-                    },
-                    { once: true },
-                );
-            }
-
-            if (window.location.pathname === "/lyrics") {
-                // Why this ? Spotify Lyrics button is disabled in songs without lyrics this re-enables them and press the button for us if available allowing us to use the original lyrics from spotify when they exists
-                lyricButton.disabled = false;
-                lyricButton.style.removeProperty("cursor");
-                const isActive = lyricButton.getAttribute("data-active") === "true";
-                if (!isActive && lyricButton.disabled === undefined) {
-                    lyricButton.click();
-                }
-            }
-
-            const elements = document.querySelectorAll("[data-testid='fullscreen-lyric']");
-            // Spotify has official lyrics
-            if (elements.length > 0) {
-                shouldUpdateData = false;
-                spotifyLyricsSection.style.removeProperty("display");
-                customLyricsSection.style.display = "none";
-
-                mainContainer.scrollIntoView({ behavior: "instant", block: "start" });
-                return;
+            const cacheResult = lyricsCache.get(track.name, track.artist);
+            if (cacheResult) {
+                state.lyrics = cacheResult;
+                state.message = "";
             } else {
-                shouldUpdateData = true;
-                spotifyLyricsSection.style.display = "none";
-                customLyricsSection.style.display = "flex";
+                state.lyrics = [];
+                state.message = "Fetching lyrics...";
+                lyricsView.setLyrics(state.lyrics);
+                lyricsView.setMessage(state.message);
+                lyricsView.setCurrentRow(0);
+
+                const result = await searchSong(track.name, track.artist);
+
+                if (!result.data) {
+                    state.lyrics = [];
+                    state.message = "An error occurred while fetching the lyrics :(";
+                } else {
+                    const res2 = findBestLyrics(track, result.data);
+
+                    if (res2.error === "Instrumental") {
+                        state.lyrics = [];
+                        state.message = "This is an instrumental song enjoy!";
+                    } else if (res2.error === "NoLyrics") {
+                        state.lyrics = [];
+                        state.message = "No lyrics found for this song :(";
+                    }
+
+                    if (res2.data) {
+                        state.lyrics = res2.data;
+                        state.message = "";
+                        lyricsCache.set(track.name, track.artist, state.lyrics);
+                    }
+                }
             }
-            handleTrackName();
+
+            lyricsView.setLyrics(state.lyrics);
+            lyricsView.setMessage(state.message);
+            lyricsView.setCurrentRow(0);
+        }
+    }
+
+    function onPlaybackChange(time: number) {
+        state.playback = time;
+        state.currentLyricRow = 0;
+
+        const index = getLyricsRowIndexFromTimestamp(state.lyrics, time);
+        state.currentLyricRow = index;
+
+        if (state.lyrics.length > 0) {
+            lyricsView.setCurrentRow(index);
+        }
+    }
+
+    function onWidgetChange() {
+        const trackNameElement = $<HTMLElement>(spotifyTrackNameQuery)!;
+        const artistNameElement = $<HTMLElement>(spotifyArtistNameQuery)!;
+
+        const track = getSpotifyTrackInfo(trackNameElement, artistNameElement, progressInputElement);
+
+        if (
+            state.track != null &&
+            state.track.artist === track.artist &&
+            state.track.name === track.name &&
+            state.track.duration === track.duration &&
+            state.track.isAd === track.isAd
+        ) {
+            // Its the same thing bruh
+            return;
         }
 
-        function onTimeChange() {
-            if (!shouldUpdateData) {
-                return;
-            }
+        onTrackChange(track);
+    }
 
-            handleTime();
+    function onProgressChange() {
+        const pb = getSpotifyPlayback(progressInputElement);
+        onPlaybackChange(pb);
+    }
+
+    function onLyricsButtonChange() {
+        const lyricButton = $<HTMLInputElement>(spotifyLyricsButtonQuery)!;
+
+        // If is active the page is handled by spotify
+        const isActive = lyricButton.getAttribute("data-active") == "true";
+        if (lyricButton.disabled) {
+            lyricButton.disabled = false;
+            lyricButton.style.cursor = "pointer!important";
+
+            lyricButton.addEventListener("click", () => history.pushState({}, "", "/lyrics"), {
+                once: true,
+                passive: true,
+            });
         }
 
-        unsubscribeTrackName = subscribeMutation(widget, () => {
-            onWidgetChange();
-        });
+        state.isOfficialLyricPage = isActive;
+    }
 
-        unsubscribeTrackTime = subscribeMutation(playbackTimeTrigger, () => {
-            onTimeChange();
-        });
+    function onPageChange(pathname: string) {
+        if (pathname !== "/lyrics") {
+            // TODO: Usubscribe from things such as the official lyrics tracker
+            mainSection.style.removeProperty("display");
+            lyricsView.destroy();
+            return;
+        }
 
         onWidgetChange();
-        onTimeChange();
+        onProgressChange();
+        onLyricsButtonChange();
+
+        mainSection.style.display = "none";
+        mainSection.parentElement?.append(lyricsView.getNode());
     }
 
-    let lastPage = window.location.pathname;
+    let lastPathname = window.location.pathname;
+    onWidgetChange();
+    onProgressChange();
+    onLyricsButtonChange();
+    onPageChange(lastPathname);
 
-    onSpotifyPageChange(lastPage);
+    subscribeMutation(playbackWidget, onWidgetChange);
+    subscribeMutation(progressInputElement, onProgressChange);
+    subscribeMutation(lyricButton.parentNode! as HTMLElement, onLyricsButtonChange);
     subscribeMutation(mainSection, () => {
-        if (lastPage !== window.location.pathname) {
-            lastPage = window.location.pathname;
-            onSpotifyPageChange(lastPage);
+        if (lastPathname !== window.location.pathname) {
+            lastPathname = window.location.pathname;
+            onPageChange(window.location.pathname);
         }
     });
 }
 
-init().catch((err) => console.error(err));
+init();

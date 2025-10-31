@@ -16,6 +16,7 @@ export default defineConfig({
                 if (format === "cjs") {
                     return filename + ".js";
                 }
+
                 return filename + "." + format;
             },
             entry: {
