@@ -7,6 +7,7 @@ export interface SongInfo {
     name: string;
     trackName: string;
     albumName: string;
+    artistName: string;
     // in seconds
     duration: number;
     instrumental: boolean;
@@ -59,7 +60,7 @@ export function findBestLyrics(
     let isInstrumental = false;
 
     let bestCandidate: SongInfo | null = null;
-    let bestDelta: number = Infinity;
+    let bestScore: number = -Infinity;
 
     for (let song of songs) {
         if (song.instrumental) {
@@ -72,8 +73,26 @@ export function findBestLyrics(
 
         const delta = Math.abs(song.duration * 1000 - track.duration);
 
-        if (bestCandidate === null || delta < bestDelta) {
-            bestDelta = delta;
+        let score = -100 * delta;
+
+        if (song.name === track.name) {
+            score += 100;
+        }
+
+        if (song.artistName === track.artist) {
+            score += 100;
+        }
+
+        if (song.name.includes(track.name)) {
+            score = +50;
+        }
+
+        if (song.artistName.includes(track.artist)) {
+            score += 50;
+        }
+
+        if (bestCandidate === null || score > bestScore) {
+            bestScore = delta;
             bestCandidate = song;
         }
     }
