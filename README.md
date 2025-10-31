@@ -18,10 +18,10 @@ pnpm build
 
 Or without WSL:
  - Run `pnpm build`
- - Create dirs `./dist/chrome` `./dist/firefox`
- - Copy content of `./build` in both `./dist/chrome` `./dist/firefox`
- - (For Firefox) Copy `./src/manifest.firefox.json` to `./dist/firefox` as `manifest.json`
- - (For Chrome/Chromium) Copy `./src/manifest.chrome.json` to `./dist/chrome` as `manifest.json`
+ - Create dirs `./dist/v3` `./dist/v2`
+ - Copy content of `./build` in both `./dist/v3` `./dist/v2`
+ - (For Manifest V2 browsers) Copy `./src/manifest.v2.json` to `./dist/v2` as `manifest.json`
+ - (For Manifest v3 browsers like Chrome/Chromium) Copy `./src/manifest.v3.json` to `./dist/v3` as `manifest.json`
 
 
 ## How to install
