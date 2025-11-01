@@ -1,15 +1,23 @@
 {
     "description": "A spotify extension for additional lyrics",
-    "manifest_version": 3,
+    "manifest_version": 2,
     "name": "Lyrixy",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "content_scripts": [
         {
-            "matches": ["https://open.spotify.com/*"],
-            "js": ["index.js"],
-            "css": ["index.css"],
+            "matches": [
+                "https://open.spotify.com/*"
+            ],
+            "js": [
+                "index.js"
+            ],
+            "css": [
+                "index.css"
+            ],
             "run_at": "document_end"
         }
     ],
-    "host_permissions": ["https://lrclib.net/*"]
+    "permissions": [
+        "https://lrclib.net/*"
+    ]
 }

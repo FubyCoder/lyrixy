@@ -6,8 +6,8 @@
 
     /*Official spotify default font-size with fallback if the css-variable is removed by spotify*/
     --lyrixy-font-size: 2rem;
-    --lyrixy-font-size-2: 2.5rem;
-    --lyrixy-font-size-3: 3rem;
+    --lyrixy-font-size-2: 3rem;
+    --lyrixy-font-size-3: 4rem;
 }
 
 .lyrixy-container {
@@ -31,19 +31,19 @@
 
 @container (width > 800px) {
     .lyrixy-rows {
-        --lyrixy-font-size: var(--lyrixy-font-size-2);
+        font-size: var(--lyrixy-font-size-2);
     }
 }
 
 @container (width > 1600px) {
     .lyrixy-rows {
-        --lyrixy-font-size: var(--lyrixy-font-size-3);
+        font-size: var(--lyrixy-font-size-3);
     }
 }
 
 .lyrixy-text,
 .lyrixy-message {
-    font-family: "SpotifyMixUI";
+    font-family: "SpotifyMixUITitle", "SpotifyMixUI", sans-serif;
     font-weight: 700;
     min-height: 2rem;
     transition: color 0.5s ease;

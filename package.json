@@ -1,11 +1,14 @@
 {
     "name": "lyrixy",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "A spotify extension for additional lyrics",
     "main": "./src/index.ts",
     "type": "module",
     "scripts": {
-        "build": "./scripts/build.sh"
+        "build": "./scripts/build.sh",
+        "release:patch": "node --experimental-strip-types ./scripts/new-release.ts --patch && pnpm run build",
+        "release:minor": "node --experimental-strip-types ./scripts/new-release.ts --minor && pnpm run build",
+        "release:major": "node --experimental-strip-types ./scripts/new-release.ts --major && pnpm run build"
     },
     "keywords": [],
     "author": "FubyCoder",
