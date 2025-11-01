@@ -94,8 +94,11 @@ function start(args: string[]) {
 
     if (context.update === "major") {
         major++;
+        minor = 0;
+        patch = 0;
     } else if (context.update === "minor") {
         minor++;
+        patch = 0;
     } else if (context.update === "patch") {
         patch++;
     }
