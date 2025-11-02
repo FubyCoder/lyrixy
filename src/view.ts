@@ -56,6 +56,13 @@ export class LyricsRow {
         }
     }
 
+    setTimestamp(timestamp: number) {
+        if (this.#state.timestamp !== timestamp) {
+            this.#state.timestamp = timestamp;
+            this.#hasChanged = true;
+        }
+    }
+
     scrollInto() {
         this.#textElement.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -182,6 +189,7 @@ export class LyricsView {
             } else {
                 row.setText(lyrics.lyrics);
                 row.setType(rowType);
+                row.setTimestamp(lyrics.timestamp);
             }
         }
 
