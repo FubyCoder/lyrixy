@@ -50,11 +50,6 @@ function start(args: string[]) {
     const projectPackageJsonPath = path.join(__dirname, "..", "./package.json");
     const manifestV2Path = path.join(__dirname, "..", "./src/manifest.v2.json");
     const manifestV3Path = path.join(__dirname, "..", "./src/manifest.v3.json");
-    console.log({
-        projectPackageJsonPath,
-        manifestV2Path,
-        manifestV3Path,
-    });
 
     if (!fileExists(projectPackageJsonPath)) {
         console.error("File package.json is missing");
@@ -80,7 +75,6 @@ function start(args: string[]) {
         process.exit(1);
     }
 
-    console.log({ currentVersion, res: currentVersion.match(/"^\d+\.\d+\.\d+$"/) });
     const isSemver = currentVersion.match(/^\d+\.\d+\.\d+$/) !== null;
 
     if (!isSemver) {

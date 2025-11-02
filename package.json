@@ -1,6 +1,6 @@
 {
     "name": "lyrixy",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "A spotify extension for additional lyrics",
     "main": "./src/index.ts",
     "type": "module",
