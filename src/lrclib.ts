@@ -1,6 +1,5 @@
 import type { Track } from "./extension.js";
-import { parseSongLyrics } from "./sync.js";
-import type { LyricsWithTimestamp } from "./utils.js";
+import { parseSongLyrics, type LyricsWithTimestamp } from "./sync.js";
 
 export interface SongInfo {
     id: number;
@@ -97,11 +96,10 @@ export function findBestLyrics(
         }
     }
 
-    if (!bestCandidate && isInstrumental) {
-        return { error: "Instrumental", data: null };
-    }
-
     if (!bestCandidate) {
+        if (isInstrumental) {
+            return { error: "Instrumental", data: null };
+        }
         return { error: "NoLyrics", data: null };
     }
 

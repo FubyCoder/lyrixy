@@ -1,4 +1,4 @@
-import type { LyricsWithTimestamp } from "./utils.js";
+import type { LyricsWithTimestamp } from "./sync.js";
 
 interface LyricsViewState {
     currentRow: number;

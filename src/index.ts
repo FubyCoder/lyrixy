@@ -75,6 +75,15 @@ async function init() {
             lyricsView.destroy();
         }
 
+        if (state.track.isAd) {
+            state.lyrics = [];
+            state.message = "Spotify Ad break...";
+            lyricsView.setLyrics(state.lyrics);
+            lyricsView.setMessage(state.message);
+            lyricsView.setCurrentRow(0);
+            return;
+        }
+
         if (!state.hasOfficialLyrics) {
             mainSection.style.display = "none";
             mainSection.parentElement?.appendChild(lyricsView.getNode());

@@ -1,5 +1,9 @@
 import type { SongInfo } from "./lrclib.js";
-import type { LyricsWithTimestamp } from "./utils.js";
+
+export interface LyricsWithTimestamp {
+    timestamp: number;
+    lyrics: string;
+}
 
 export function getLyricsRowIndexFromTimestamp(lyrics: LyricsWithTimestamp[], timestamp: number) {
     if (lyrics.length === 0) {
